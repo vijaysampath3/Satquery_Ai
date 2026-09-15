@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, MessageSquare, Info, Home, ShieldCheck } from 'lucide-react';
+import { Plus, MessageSquare, Map, Home, ShieldCheck } from 'lucide-react';
 
 export default function Sidebar({
   sessions,
@@ -8,6 +8,8 @@ export default function Sidebar({
   onSelectSession,
   onNewAnalysis,
   isOpen,
+  activeView,
+  onToggleViewMode,
 }) {
   return (
     <aside className={`workspace-sidebar ${isOpen ? 'open' : ''}`}>
@@ -20,6 +22,16 @@ export default function Sidebar({
           </div>
         </Link>
       </div>
+
+      {onToggleViewMode && (
+        <button
+          className="new-analysis-btn"
+          style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.35)', color: '#a5b4fc' }}
+          onClick={onToggleViewMode}
+        >
+          <Map size={16} /> Switch to Map View
+        </button>
+      )}
 
       <button className="new-analysis-btn" onClick={onNewAnalysis}>
         <Plus size={16} /> New analysis

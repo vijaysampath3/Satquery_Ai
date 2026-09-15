@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Chat from '../components/Chat';
+import MapWorkspace from '../components/Map/MapWorkspace';
 import { analyzeScene, fetchHealth } from '../api/satquery';
 import '../styles/workspace.css';
 
 export default function Workspace() {
+  const [activeView, setActiveView] = useState('map'); // 'map' or 'upload'
   const [sessions, setSessions] = useState([
     {
       id: 'session-1',
@@ -174,6 +176,20 @@ export default function Workspace() {
     }
   };
 
+  const toggleViewMode = () => {
+    setActiveView((v) => (v === 'map' ? 'upload' : 'map'));
+  };
+
+  if (activeView === 'map') {
+    return (
+      <MapWorkspace
+        systemStatus={systemStatus}
+        activeView={activeView}
+        onToggleViewMode={toggleViewMode}
+      />
+    );
+  }
+
   return (
     <div className="workspace-layout">
       <Sidebar
@@ -182,6 +198,8 @@ export default function Workspace() {
         onSelectSession={setActiveSessionId}
         onNewAnalysis={handleNewAnalysis}
         isOpen={isSidebarOpen}
+        activeView={activeView}
+        onToggleViewMode={toggleViewMode}
       />
 
       <Chat
@@ -196,6 +214,7 @@ export default function Workspace() {
         isAnalyzing={isAnalyzing}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         systemStatus={systemStatus}
+        onToggleViewMode={toggleViewMode}
       />
     </div>
   );

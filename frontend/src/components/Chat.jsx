@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Loader2 } from 'lucide-react';
+import { Menu, Loader2, Map } from 'lucide-react';
 import Message from './Message';
 import Composer from './Composer';
 import EmptyWorkspace from './EmptyWorkspace';
@@ -23,6 +23,7 @@ export default function Chat({
   isAnalyzing,
   onToggleSidebar,
   systemStatus,
+  onToggleViewMode,
 }) {
   const [loadingStageIdx, setLoadingStageIdx] = useState(0);
 
@@ -56,6 +57,17 @@ export default function Chat({
         </div>
 
         <div className="topbar-right">
+          {onToggleViewMode && (
+            <button
+              className="mode-switch-btn"
+              onClick={onToggleViewMode}
+              title="Switch to Interactive Map Workspace"
+            >
+              <Map size={14} />
+              <span>Map Workspace</span>
+            </button>
+          )}
+
           <div className="status-badge">
             <div className="status-badge-dot" />
             <span>
