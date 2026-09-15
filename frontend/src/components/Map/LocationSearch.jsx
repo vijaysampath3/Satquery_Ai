@@ -14,22 +14,42 @@ export default function LocationSearch({ onSelectLocation }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeLocation, setActiveLocation] = useState(RECENT_LOCATIONS[0]);
 
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = async (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
-    const newLoc = {
-      id: `loc-${Date.now()}`,
-      name: searchTerm.trim(),
-      lng: 77.2090,
-      lat: 28.6139,
-      zoom: 11,
-      coords: '28.6139° N, 77.2090° E',
-      type: 'Searched Place',
-    };
-    setActiveLocation(newLoc);
-    mapService.flyTo({ center: [newLoc.lng, newLoc.lat], zoom: newLoc.zoom });
-    if (onSelectLocation) onSelectLocation(newLoc);
-    setSearchTerm('');
+    
+    const query = searchTerm.trim();
+    
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const result = data[0];
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lon);
+        
+        const newLoc = {
+          id: `loc-${Date.now()}`,
+          name: result.display_name.split(',')[0], // Use a short version of the returned name
+          lng: lng,
+          lat: lat,
+          zoom: 11,
+          coords: `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(4)}° ${lng >= 0 ? 'E' : 'W'}`,
+          type: 'Searched Place',
+        };
+        
+        setActiveLocation(newLoc);
+        mapService.flyTo({ center: [newLoc.lng, newLoc.lat], zoom: newLoc.zoom });
+        if (onSelectLocation) onSelectLocation(newLoc);
+        setSearchTerm('');
+      } else {
+        alert(`Location "${query}" not found.`);
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      alert("Failed to search location. Please try again.");
+    }
   };
 
   const handleSelectRecent = (loc) => {

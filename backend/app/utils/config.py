@@ -44,6 +44,11 @@ class Settings:
     # ── LLM / Summarizer ──
     OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
 
+    # ── Copernicus Data Space Ecosystem (CDSE) ──
+    CDSE_S3_ACCESS_KEY: str = os.environ.get("CDSE_S3_ACCESS_KEY", "")
+    CDSE_S3_SECRET_KEY: str = os.environ.get("CDSE_S3_SECRET_KEY", "")
+    CDSE_S3_ENDPOINT: str = os.environ.get("CDSE_S3_ENDPOINT", "eodata.dataspace.copernicus.eu")
+
     # ── Qwen2.5-VL ──
     QWEN_MODEL_PATH: str = os.environ.get(
         "QWEN_MODEL_PATH",

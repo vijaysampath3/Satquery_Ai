@@ -26,6 +26,7 @@ export const MAP_BASE_STYLES = {
           'https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
         ],
         tileSize: 256,
+        maxzoom: 12,
         attribution: 'Natural Earth Data | NOAA/NSIDC | Esri | GEBCO | IHO',
       },
     },
@@ -35,7 +36,7 @@ export const MAP_BASE_STYLES = {
         type: 'raster',
         source: 'natgeo-source',
         minzoom: 0,
-        maxzoom: 16,
+        maxzoom: 24,
       },
     ],
   },
@@ -49,6 +50,7 @@ export const MAP_BASE_STYLES = {
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         ],
         tileSize: 256,
+        maxzoom: 19,
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, GeoEye, Earthstar Geographics',
       },
     },
@@ -58,7 +60,31 @@ export const MAP_BASE_STYLES = {
         type: 'raster',
         source: 'esri-satellite-source',
         minzoom: 0,
-        maxzoom: 19,
+        maxzoom: 24,
+      },
+    ],
+  },
+  'sentinel2-cloudless': {
+    name: 'Sentinel-2 True Color',
+    version: 8,
+    sources: {
+      'sentinel2-source': {
+        type: 'raster',
+        tiles: [
+          'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg',
+        ],
+        tileSize: 256,
+        maxzoom: 14,
+        attribution: 'Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020)',
+      },
+    },
+    layers: [
+      {
+        id: 'sentinel2-layer',
+        type: 'raster',
+        source: 'sentinel2-source',
+        minzoom: 0,
+        maxzoom: 24,
       },
     ],
   },
@@ -72,6 +98,7 @@ export const MAP_BASE_STYLES = {
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
         ],
         tileSize: 256,
+        maxzoom: 19,
         attribution: 'Esri Topographic Base',
       },
     },
@@ -81,32 +108,47 @@ export const MAP_BASE_STYLES = {
         type: 'raster',
         source: 'world-topo-source',
         minzoom: 0,
-        maxzoom: 19,
+        maxzoom: 24,
       },
     ],
   },
   'carto-dark': {
-    name: 'CartoDB Dark Vector',
+    name: 'Dark Canvas Vector',
     version: 8,
     sources: {
-      'carto-dark-source': {
+      'dark-base-source': {
         type: 'raster',
         tiles: [
-          'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         ],
         tileSize: 256,
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        maxzoom: 16,
+        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+      },
+      'dark-reference-source': {
+        type: 'raster',
+        tiles: [
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+        ],
+        tileSize: 256,
+        maxzoom: 16,
+        attribution: '',
       },
     },
     layers: [
       {
-        id: 'carto-dark-layer',
+        id: 'dark-base-layer',
         type: 'raster',
-        source: 'carto-dark-source',
+        source: 'dark-base-source',
         minzoom: 0,
-        maxzoom: 19,
+        maxzoom: 24,
+      },
+      {
+        id: 'dark-reference-layer',
+        type: 'raster',
+        source: 'dark-reference-source',
+        minzoom: 0,
+        maxzoom: 24,
       },
     ],
   },
@@ -118,6 +160,7 @@ export const MAP_BASE_STYLES = {
         type: 'raster',
         tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
+        maxzoom: 19,
         attribution: '&copy; OpenStreetMap contributors',
       },
     },
@@ -127,7 +170,7 @@ export const MAP_BASE_STYLES = {
         type: 'raster',
         source: 'osm-standard-source',
         minzoom: 0,
-        maxzoom: 19,
+        maxzoom: 24,
       },
     ],
   },
@@ -285,9 +328,10 @@ class MapService {
     try {
       if (typeof this.map.setSky === 'function') {
         this.map.setSky({
-          'sky-color': '#030712',
-          'horizon-color': '#0f172a',
-          'fog-color': '#020408',
+          'sky-color': '#1d4ed8',
+          'horizon-color': '#0284c7',
+          'fog-color': '#02040a',
+          'atmosphere-blend': 0.8,
         });
       }
     } catch (e) {
@@ -303,12 +347,20 @@ class MapService {
     const proj = projectionType === 'mercator' || projectionType === 'epsg-3857' ? 'mercator' : 'globe';
     this.activeProjection = proj;
 
-    try {
-      if (typeof this.map.setProjection === 'function') {
-        this.map.setProjection({ type: proj });
+    const setProjFunc = () => {
+      try {
+        if (typeof this.map.setProjection === 'function') {
+          this.map.setProjection({ type: proj });
+        }
+      } catch (e) {
+        console.warn('Projection change warning:', e);
       }
-    } catch (e) {
-      console.warn('Projection change warning:', e);
+    };
+
+    if (this.map.isStyleLoaded && !this.map.isStyleLoaded()) {
+      this.map.once('style.load', setProjFunc);
+    } else {
+      setProjFunc();
     }
   }
 

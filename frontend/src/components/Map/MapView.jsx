@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Minus, RotateCcw, Compass, Eye, Globe } from 'lucide-react';
 import { mapService, DEFAULT_CAMERA } from '../../services/mapService';
+import SpaceBackground from './SpaceBackground';
 
 export default function MapView({ selectedLayer, selectedProjection }) {
   const containerRef = useRef(null);
@@ -58,10 +59,13 @@ export default function MapView({ selectedLayer, selectedProjection }) {
 
   return (
     <div className="map-view-container map-space-bg">
+      {/* Dynamic Starfield & Galaxy Nebulae Canvas Background */}
+      <SpaceBackground />
+
       {/* Real MapLibre 3D Globe Canvas Container */}
       <div ref={containerRef} className="map-canvas-root" />
 
-      {/* Atmospheric Starfield Space Glow Overlay */}
+      {/* Atmospheric Space Glow Overlay */}
       <div className="space-atmosphere-overlay" />
 
       {/* Active Coordinates HUD (Top Center) */}

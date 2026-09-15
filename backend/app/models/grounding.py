@@ -24,15 +24,17 @@ class GroundingModel(BaseModelWrapper):
     def run(self, action: str, context: dict) -> dict:
         image_path = context["images"][0]
         query = context["query"]
+        metadata = context.get("metadata")
 
         logger.info(f"Grounding model executing for query: '{query}'")
 
         # Run remote sensing region detection
-        result = detect_target_regions(image_path, query)
+        result = detect_target_regions(image_path, query, metadata=metadata)
 
         return {
             "type": "detections",
             "boxes": result["boxes"],
+            "geo_boxes": result.get("geo_boxes", []),
             "scores": result["scores"],
             "labels": result["labels"],
             "mask": result.get("mask"),
@@ -66,6 +68,7 @@ class SegmentationModel(BaseModelWrapper):
         target = detections.get("target", "target region")
         target_type = detections.get("target_type", classify_target_type(target))
         boxes = detections.get("boxes", [])
+        geo_boxes = detections.get("geo_boxes", [])
 
         # Generate visual evidence images
         evidence_images = generate_evidence_visualizations(
@@ -75,14 +78,22 @@ class SegmentationModel(BaseModelWrapper):
             request_id=request_id,
         )
 
-        regions = [
-            {"label": label, "confidence": score, "box": box}
-            for label, score, box in zip(
-                detections.get("labels", []),
-                detections.get("scores", []),
-                detections.get("boxes", []),
-            )
-        ]
+        _geo_list = geo_boxes if (len(geo_boxes) == len(boxes)) else [None] * len(boxes)
+        regions = []
+        for _label, _score, _box, _geo in zip(
+            detections.get("labels", []),
+            detections.get("scores", []),
+            detections.get("boxes", []),
+            _geo_list,
+        ):
+            regions.append({
+                "label": _label,
+                "confidence": _score,
+                "box": _box,
+                "bbox": _box,
+                "geo_bbox": _geo,
+                "target_type": target_type,
+            })
 
         target_analysis = detections.get("target_analysis", {
             "target": target,
@@ -106,11 +117,11 @@ class SegmentationModel(BaseModelWrapper):
             else:
                 ans = f"OBSERVED: Identified {len(boxes)} region(s) matching '{target}'.\nINFERRED: Highlighted bounding boxes display the spatial distribution of target features."
         else:
-            ans = f"OBSERVED: No distinct regions found matching '{target}'.\nINFERRED: Target feature may be absent or below detection threshold in this scene."
+            ans = f"OBSERVED: No distinct regions found matching '{target}'.\nINFERRED: No reliable grounding region was identified in this satellite scene."
 
         return {
             "answer": ans,
-            "status_text": "FALLBACK ENGINE: Target Grounding (Spectral & Contour Segmentation)",
+            "status_text": "TARGET GROUNDING COMPLETE (Spectral & Contour Segmentation)",
             "evidence_images": evidence_images,
             "regions": regions,
             "target_type": target_type,

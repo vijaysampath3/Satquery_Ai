@@ -49,7 +49,83 @@ def classify_target_type(target_keyword: str) -> str:
         return "generic"
 
 
-def detect_target_regions(source, target_keyword: str) -> dict:
+def reproject_points_to_wgs84(coords: list[tuple[float, float]], src_crs_str: str | None) -> list[tuple[float, float]]:
+    """Reproject (x, y) coordinates from src_crs_str to EPSG:4326 (WGS84 lon, lat)."""
+    if not src_crs_str or "4326" in str(src_crs_str):
+        return coords
+    try:
+        from rasterio.warp import transform as transform_crs
+        xs = [c[0] for c in coords]
+        ys = [c[1] for c in coords]
+        lons, lats = transform_crs(str(src_crs_str), "EPSG:4326", xs, ys)
+        return list(zip(lons, lats))
+    except Exception:
+        try:
+            from pyproj import Transformer
+            transformer = Transformer.from_crs(str(src_crs_str), "EPSG:4326", always_xy=True)
+            res = []
+            for x, y in coords:
+                lon, lat = transformer.transform(x, y)
+                res.append((lon, lat))
+            return res
+        except Exception:
+            return coords
+
+
+def convert_pixel_bbox_to_geo_bbox(
+    bbox: list[float],
+    transform: list[float] | None,
+    crs_str: str | None,
+    aoi: dict | None = None,
+    img_width: int = 0,
+    img_height: int = 0,
+) -> list[float]:
+    """
+    Convert pixel bounding box [x1, y1, x2, y2] to geographic WGS84 bounding box [min_lon, min_lat, max_lon, max_lat]
+    using clipped raster Affine transform and CRS reprojection to EPSG:4326.
+    """
+    x1, y1, x2, y2 = bbox
+    min_lon, min_lat, max_lon, max_lat = None, None, None, None
+
+    if transform and len(transform) >= 6:
+        a, b, c, d, e, f = transform[:6]
+        X1 = a * x1 + b * y1 + c
+        Y1 = d * x1 + e * y1 + f
+        X2 = a * x2 + b * y2 + c
+        Y2 = d * x2 + e * y2 + f
+
+        coords = [(X1, Y1), (X2, Y2), (X1, Y2), (X2, Y1)]
+        reprojected = reproject_points_to_wgs84(coords, crs_str)
+        lons = [pt[0] for pt in reprojected]
+        lats = [pt[1] for pt in reprojected]
+
+        min_lon, max_lon = min(lons), max(lons)
+        min_lat, max_lat = min(lats), max(lats)
+
+    if min_lon is None and aoi and img_width > 0 and img_height > 0:
+        aoi_min_lon = aoi.get("min_lon", -180.0)
+        aoi_max_lon = aoi.get("max_lon", 180.0)
+        aoi_min_lat = aoi.get("min_lat", -90.0)
+        aoi_max_lat = aoi.get("max_lat", 90.0)
+
+        min_lon = aoi_min_lon + (x1 / img_width) * (aoi_max_lon - aoi_min_lon)
+        max_lon = aoi_min_lon + (x2 / img_width) * (aoi_max_lon - aoi_min_lon)
+        max_lat = aoi_max_lat - (y1 / img_height) * (aoi_max_lat - aoi_min_lat)
+        min_lat = aoi_max_lat - (y2 / img_height) * (aoi_max_lat - aoi_min_lat)
+
+    if min_lon is None:
+        return [0.0, 0.0, 0.0, 0.0]
+
+    if aoi:
+        min_lon = max(min_lon, aoi.get("min_lon", min_lon))
+        max_lon = min(max_lon, aoi.get("max_lon", max_lon))
+        min_lat = max(min_lat, aoi.get("min_lat", min_lat))
+        max_lat = min(max_lat, aoi.get("max_lat", max_lat))
+
+    return [round(min_lon, 6), round(min_lat, 6), round(max_lon, 6), round(max_lat, 6)]
+
+
+def detect_target_regions(source, target_keyword: str, metadata: dict | None = None) -> dict:
     """
     Detect requested target features (water, vegetation, built-up, agriculture) using
     remote-sensing spectral index thresholding & contour extraction.
@@ -57,6 +133,7 @@ def detect_target_regions(source, target_keyword: str) -> dict:
     Args:
         source: File path string or image numpy array.
         target_keyword: Extracted target class query.
+        metadata: Optional metadata dictionary containing transform, crs, aoi, etc.
 
     Returns:
         Dict with keys:
@@ -216,8 +293,19 @@ def detect_target_regions(source, target_keyword: str) -> dict:
         "mask_available": bool(np.any(binary_mask)),
     }
 
+    meta_data = metadata or {}
+    transform = meta.get("transform") or meta_data.get("transform")
+    crs = meta.get("crs") or meta_data.get("crs")
+    aoi = meta_data.get("aoi") or meta.get("aoi")
+
+    geo_boxes = [
+        convert_pixel_bbox_to_geo_bbox(box, transform, crs, aoi, w, h)
+        for box in boxes
+    ]
+
     return {
         "boxes": boxes,
+        "geo_boxes": geo_boxes,
         "scores": scores,
         "labels": labels,
         "mask": binary_mask,

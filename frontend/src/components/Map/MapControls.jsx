@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Calendar, Sliders, Layers, Sparkles, Filter, ChevronUp, ChevronDown } from 'lucide-react';
+import { Box, Calendar, Sliders, Layers, Search, Filter, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import AnalysisModeSelector from './AnalysisModeSelector';
 
 export default function MapControls({
@@ -13,9 +13,13 @@ export default function MapControls({
   setDate2,
   selectedModality,
   onSelectModality,
+  selectedAOI,
+  onToggleAOIDraw,
+  isAOIDrawing,
+  onSearchScenes,
+  isSearchingScenes,
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [isAOIActive, setIsAOIActive] = useState(false);
 
   return (
     <div className={`map-bottom-controls-bar ${isExpanded ? 'expanded' : 'minimized'}`}>
@@ -23,7 +27,7 @@ export default function MapControls({
       <div className="controls-bar-header">
         <div className="controls-header-left">
           <Sliders size={15} className="controls-header-icon" />
-          <span className="controls-header-title">Spatial Analysis & Controls</span>
+          <span className="controls-header-title">Spatial Analysis & Discovery Controls</span>
         </div>
         <button
           className="controls-expand-btn"
@@ -36,18 +40,24 @@ export default function MapControls({
 
       {isExpanded && (
         <div className="controls-bar-content animate-fade-in">
-          {/* 1. Select Area AOI Bounding Box Tool Placeholder */}
+          {/* 1. Select Area AOI Bounding Box Tool */}
           <div className="control-group">
             <div className="control-section-label">
               <Box size={12} /> Bounding Box AOI
             </div>
             <button
-              className={`control-btn-tool ${isAOIActive ? 'active' : ''}`}
-              onClick={() => setIsAOIActive(!isAOIActive)}
-              title="Click to draw an Area of Interest rectangle on map"
+              className={`control-btn-tool ${isAOIDrawing ? 'active' : selectedAOI ? 'has-aoi' : ''}`}
+              onClick={onToggleAOIDraw}
+              title="Click to select Area of Interest bounding box"
             >
               <Box size={14} />
-              <span>{isAOIActive ? 'Drawing Area...' : 'Select Area (AOI)'}</span>
+              <span>
+                {isAOIDrawing
+                  ? 'Click & Drag Area...'
+                  : selectedAOI
+                  ? 'AOI Selected ✓'
+                  : 'Select Area (AOI)'}
+              </span>
             </button>
           </div>
 
@@ -112,25 +122,27 @@ export default function MapControls({
 
           <div className="controls-divider"></div>
 
-          {/* 5. Optical / SAR Controls */}
+          {/* 5. Search Scenes CTA Action Button */}
           <div className="control-group">
             <div className="control-section-label">
-              <Filter size={12} /> Modality Composite
+              <Search size={12} /> Discovery Action
             </div>
-            <div className="modality-pills-row">
-              <button
-                className={`mod-selector-pill ${selectedModality === 'optical' ? 'active' : ''}`}
-                onClick={() => onSelectModality('optical')}
-              >
-                RGB / Color IR
-              </button>
-              <button
-                className={`mod-selector-pill ${selectedModality === 'sar' ? 'active' : ''}`}
-                onClick={() => onSelectModality('sar')}
-              >
-                SAR VV-VH Ratio
-              </button>
-            </div>
+            <button
+              className="search-scenes-cta-btn"
+              onClick={onSearchScenes}
+              disabled={isSearchingScenes}
+              title="Search Copernicus STAC catalog for real Sentinel scenes"
+            >
+              {isSearchingScenes ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Searching...
+                </>
+              ) : (
+                <>
+                  <Search size={14} /> Search Scenes
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}

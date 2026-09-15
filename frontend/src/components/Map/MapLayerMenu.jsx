@@ -4,8 +4,9 @@ import { Layers, ChevronDown, Check } from 'lucide-react';
 export const MAP_LAYERS = [
   { id: 'natgeo-globe', name: 'Natural Earth 3D Globe', type: '3D Topo', desc: 'Topographic terrain, ocean bathymetry & graticules' },
   { id: 'esri-satellite', name: 'Esri World Imagery', type: 'Satellite', desc: 'High-res global visual imagery' },
+  { id: 'sentinel2-cloudless', name: 'Sentinel-2 True Color', type: 'Copernicus', desc: 'Sentinel-2 10m cloudless satellite mosaic' },
   { id: 'world-topo', name: 'Esri World Topographic', type: 'Topo', desc: 'Physical landform contours & boundaries' },
-  { id: 'carto-dark', name: 'CartoDB Dark Vector', type: 'Vector', desc: 'High-contrast dark cartography' },
+  { id: 'carto-dark', name: 'Dark Canvas Vector', type: 'Vector', desc: 'High-contrast dark cartography' },
   { id: 'osm-standard', name: 'OpenStreetMap Standard', type: 'Street', desc: 'Global road & place boundaries' },
 ];
 

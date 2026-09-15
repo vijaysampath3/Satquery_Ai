@@ -2,21 +2,21 @@ import React, { useState } from 'react';
 import { Bot, Sparkles, Send, HelpCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const SUGGESTED_SPATIAL_QUERIES = [
-  "Identify water body changes",
-  "Detect marine oil spill slicks",
-  "Highlight vegetation canopy",
-  "Analyze urban infrastructure",
+  "Highlight vegetation",
+  "Show water bodies",
+  "Highlight urban areas",
+  "What is visible in this region?",
+  "Describe this satellite image.",
 ];
 
-export default function AIQueryPanel({ onSendQuery }) {
+export default function AIQueryPanel({ onSendQuery, isReady = false, isAnalyzing = false }) {
   const [queryText, setQueryText] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!queryText.trim()) return;
+    if (!queryText.trim() || isAnalyzing) return;
     if (onSendQuery) onSendQuery(queryText.trim());
-    setQueryText('');
   };
 
   const handleSelectSuggested = (q) => {
@@ -42,30 +42,43 @@ export default function AIQueryPanel({ onSendQuery }) {
 
       {!isCollapsed && (
         <div className="floating-panel-body">
+          {!isReady && (
+            <div className="ai-readiness-hint warning">
+              Select and prepare a Sentinel-2 scene before asking AI.
+            </div>
+          )}
+
+          {isReady && (
+            <div className="ai-readiness-hint success">
+              ✓ Sentinel-2 AOI Prepared & Ready for AI Query
+            </div>
+          )}
+
           {/* Query Text Form */}
           <form className="ai-query-form" onSubmit={handleSubmit}>
             <textarea
               className="ai-query-textarea"
-              placeholder="Ask a question about this map region..."
+              placeholder={isReady ? "Ask a question about this prepared Sentinel-2 AOI..." : "Select and prepare a scene first..."}
               value={queryText}
               onChange={(e) => setQueryText(e.target.value)}
               rows={3}
+              disabled={isAnalyzing}
             />
             <button
               type="submit"
               className="ask-ai-btn"
-              disabled={!queryText.trim()}
-              title="Submit natural language query to SatQuery AI"
+              disabled={!queryText.trim() || !isReady || isAnalyzing}
+              title={isReady ? "Submit query to Qwen2.5-VL" : "Select and prepare a Sentinel-2 scene first"}
             >
               <Sparkles size={14} />
-              <span>Ask AI</span>
+              <span>{isAnalyzing ? 'Analyzing Satellite Data...' : 'Ask AI'}</span>
             </button>
           </form>
 
           {/* Suggested Questions Chips */}
           <div className="suggested-queries-section">
             <div className="suggested-header">
-              <HelpCircle size={12} /> Suggested Questions
+              <HelpCircle size={12} /> Suggested Sentinel-2 Queries
             </div>
             <div className="suggested-chips-column">
               {SUGGESTED_SPATIAL_QUERIES.map((q, idx) => (
@@ -73,6 +86,7 @@ export default function AIQueryPanel({ onSendQuery }) {
                   key={idx}
                   className="suggested-spatial-chip"
                   onClick={() => handleSelectSuggested(q)}
+                  disabled={isAnalyzing}
                 >
                   <Sparkles size={11} className="chip-sparkle" />
                   <span>{q}</span>
@@ -85,3 +99,4 @@ export default function AIQueryPanel({ onSendQuery }) {
     </div>
   );
 }
+
