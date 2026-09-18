@@ -5,7 +5,11 @@ import AIQueryPanel from './AIQueryPanel';
 import MapView from './MapView';
 import MapControls from './MapControls';
 import SceneResults from './SceneResults';
+import { Download } from 'lucide-react';
+import { generatePdfReport } from '../../utils/pdfReportGenerator';
 import { searchSatelliteScenes, accessSatelliteScene, clipSatelliteScene, analyzeSatelliteScene } from '../../api/satquery';
+import { extractObservedInferred } from '../../utils/formatters';
+import FormattedEvidenceText from '../FormattedEvidenceText';
 import '../../styles/map.css';
 
 export default function MapWorkspace({
@@ -50,6 +54,7 @@ export default function MapWorkspace({
   const [spatialAnalysisResult, setSpatialAnalysisResult] = useState(null);
   const [isAnalyzingSpatial, setIsAnalyzingSpatial] = useState(false);
   const [spatialAnalysisError, setSpatialAnalysisError] = useState(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleLocationSelect = (loc) => {
     if (loc && loc.lng && loc.lat) {
@@ -194,6 +199,18 @@ export default function MapWorkspace({
     }
   };
 
+  const handleExportPdf = async () => {
+    if (!spatialAnalysisResult) return;
+    try {
+      setIsExportingPdf(true);
+      await generatePdfReport(spatialAnalysisResult);
+    } catch (err) {
+      console.error('Failed to generate PDF report:', err);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const isClipReadyForAI = Boolean(
     clipResult &&
     clipResult.status === 'ready' &&
@@ -273,15 +290,31 @@ export default function MapWorkspace({
               <span className="panel-title-text">
                 {isAnalyzingSpatial ? '🤖 Analyzing Satellite Data...' : '🤖 Sentinel-2 Spatial AI Result'}
               </span>
-              <button
-                className="close-panel-btn"
-                onClick={() => {
-                  setSpatialAnalysisResult(null);
-                  setSpatialAnalysisError(null);
-                }}
-              >
-                ×
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {spatialAnalysisResult && !isAnalyzingSpatial && (
+                  <button
+                    className="save-pdf-btn"
+                    onClick={handleExportPdf}
+                    disabled={isExportingPdf}
+                    title="Save complete analysis report as a structured PDF"
+                    style={{ padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'background 0.2s' }}
+                    onMouseOver={(e) => !isExportingPdf && (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+                    onMouseOut={(e) => !isExportingPdf && (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                  >
+                    <Download size={14} />
+                    <span>{isExportingPdf ? 'Exporting...' : 'Save PDF'}</span>
+                  </button>
+                )}
+                <button
+                  className="close-panel-btn"
+                  onClick={() => {
+                    setSpatialAnalysisResult(null);
+                    setSpatialAnalysisError(null);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             <div className="floating-panel-body">
@@ -315,7 +348,34 @@ export default function MapWorkspace({
                   </div>
 
                   <div className="analysis-answer-box">
-                    <p className="answer-text">{spatialAnalysisResult.answer}</p>
+                    {(() => {
+                      const { mainText, observedText, inferredText } = extractObservedInferred(spatialAnalysisResult.answer);
+                      return (
+                        <>
+                          {mainText && (
+                            <div className="answer-text" style={{ whiteSpace: 'pre-wrap', marginBottom: observedText || inferredText ? '1rem' : 0 }}>
+                              {mainText}
+                            </div>
+                          )}
+                          {observedText && (
+                            <div className="evidence-text-card observed-card" style={{ marginBottom: inferredText ? '1rem' : 0 }}>
+                              <div className="evidence-sub-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 800, color: '#818cf8', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                <span>OBSERVED EVIDENCE</span>
+                              </div>
+                              <FormattedEvidenceText text={observedText} type="observed" />
+                            </div>
+                          )}
+                          {inferredText && (
+                            <div className="evidence-text-card inferred-card">
+                              <div className="evidence-sub-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 800, color: '#34d399', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                <span>INFERRED INTELLIGENCE</span>
+                              </div>
+                              <FormattedEvidenceText text={inferredText} type="inferred" />
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="analysis-source-meta">
